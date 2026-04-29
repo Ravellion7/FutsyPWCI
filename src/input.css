@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#home .animate-vertical-loop-fast img,
+#home .animate-vertical-loop-mid img,
+#home .animate-vertical-loop-slow img {
+	box-shadow: none !important;
+	filter: none !important;
+}
