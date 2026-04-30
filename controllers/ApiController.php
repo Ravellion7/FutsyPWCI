@@ -534,7 +534,7 @@ class ApiController
         if (!Inventory::hasEnoughCards($collectorId, $offerItems)) {
             static::jsonResponse([
                 'ok' => false,
-                'error' => 'You do not have enough cards for this offer.'
+                'error' => 'No tienes las cartas necesarias para aceptar este intercambio.'
             ], 409);
         }
 
@@ -556,7 +556,7 @@ class ApiController
 
             static::jsonResponse([
                 'ok' => true,
-                'message' => 'Trade created successfully.',
+                'message' => 'Intercambio creado exitosamente.',
                 'data' => [
                     'id_trade' => $tradeId,
                 ]
