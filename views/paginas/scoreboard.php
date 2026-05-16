@@ -115,7 +115,7 @@ async function loadCompetition(competition) {
         renderMatchesPage(1);
     } catch (error) {
         console.error('Error loading scoreboard:', error);
-        showError(error.message || 'Error de red al cargar el scoreboard');
+        //showError(error.message || 'Error de red al cargar el scoreboard');
     }
 }
 
