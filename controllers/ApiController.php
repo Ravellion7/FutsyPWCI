@@ -366,6 +366,7 @@ class ApiController
     $openings = [];
     for ($i = 0; $i < $balance; $i++) {
         $opening = static::openSinglePack($collectorId, $packId, $packSize, $dropRates);
+<<<<<<< HEAD
 
         // Remove image_url to save memory when opening multiple packs
         foreach ($opening['cards'] as &$card) {
@@ -378,6 +379,20 @@ class ApiController
 
     $db->commit();
 
+=======
+        
+        // Remove image_url to save memory when opening multiple packs
+        foreach ($opening['cards'] as &$card) {
+            unset($card['image_url']);
+        }
+        unset($card);
+        
+        $openings[] = $opening;
+    }
+
+    $db->commit();
+
+>>>>>>> 41385f32c9b277ca87b91a1e4eb0a3cf54943944
     static::jsonResponse([
         'ok' => true,
         'message' => 'All packs opened successfully.',
