@@ -359,26 +359,34 @@ class ApiController
         $db->begin_transaction();
 
         try {
-            if (!Collector::decrementPacks($collectorId, $balance)) {
-                throw new \RuntimeException('Could not decrement packs balance.');
-            }
+    if (!Collector::decrementPacks($collectorId, $balance)) {
+        throw new \RuntimeException('Could not decrement packs balance.');
+    }
 
-            $openings = [];
-            for ($i = 0; $i < $balance; $i++) {
-                $openings[] = static::openSinglePack($collectorId, $packId, $packSize, $dropRates);
-            }
+    $openings = [];
+    for ($i = 0; $i < $balance; $i++) {
+        $opening = static::openSinglePack($collectorId, $packId, $packSize, $dropRates);
+        
+        // Remove image_url to save memory when opening multiple packs
+        foreach ($opening['cards'] as &$card) {
+            unset($card['image_url']);
+        }
+        unset($card);
+        
+        $openings[] = $opening;
+    }
 
-            $db->commit();
+    $db->commit();
 
-            static::jsonResponse([
-                'ok' => true,
-                'message' => 'All packs opened successfully.',
-                'data' => [
-                    'opened_count' => $balance,
-                    'openings' => $openings,
-                    'packs_balance' => 0,
-                ]
-            ]);
+    static::jsonResponse([
+        'ok' => true,
+        'message' => 'All packs opened successfully.',
+        'data' => [
+            'opened_count' => $balance,
+            'openings' => $openings,
+            'packs_balance' => 0,
+        ]
+    ]);
         } catch (\Throwable $e) {
             $db->rollback();
 
