@@ -1,5 +1,17 @@
 <main class="flex-1 flex flex-col px-4 sm:px-6 md:px-10 lg:px-16 py-4 sm:py-6">
-    <h1 class="text-white font-extrabold tracking-wide text-3xl sm:text-4xl md:text-5xl lg:text-6xl mt-2 sm:mt-4 mb-6 sm:mb-8 md:mb-10">MUNDIAL 2026</h1>
+    <h1 class="text-white font-extrabold tracking-wide text-3xl sm:text-4xl md:text-5xl lg:text-6xl mt-2 sm:mt-4 mb-6 sm:mb-8 md:mb-10">
+        <span id="pageTitle">MUNDIAL 2026</span>
+    </h1>
+
+    <!-- Competition Toggle Buttons -->
+    <div class="mb-6 flex gap-3">
+        <button id="wcToggleBtn" class="px-6 py-2 rounded-lg bg-[#BF7D24] text-white text-sm sm:text-base font-semibold hover:bg-[#CE8F3A] transition" data-competition="wc">
+            Copa Mundial
+        </button>
+        <button id="plToggleBtn" class="px-6 py-2 rounded-lg bg-white/10 text-white text-sm sm:text-base font-semibold hover:bg-white/20 transition border border-white/20" data-competition="pl">
+            Premier League
+        </button>
+    </div>
 
     <div class="w-full max-w-4xl mx-auto">
         <!-- Standings Section -->
@@ -62,11 +74,35 @@
 <script>
 let __allMatches = [];
 let __currentPage = 1;
+let __currentCompetition = 'wc';
 const __pageSize = 5;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Load World Cup by default
+    await loadCompetition('wc');
+    
+    // Set up toggle button listeners
+    document.getElementById('wcToggleBtn').addEventListener('click', () => loadCompetition('wc'));
+    document.getElementById('plToggleBtn').addEventListener('click', () => loadCompetition('pl'));
+});
+
+async function loadCompetition(competition) {
+    __currentCompetition = competition;
+    __currentPage = 1;
+    
+    // Update button styles
+    updateButtonStyles(competition);
+    
+    // Update page title
+    const pageTitle = document.getElementById('pageTitle');
+    if (competition === 'pl') {
+        pageTitle.textContent = 'PREMIER LEAGUE';
+    } else {
+        pageTitle.textContent = 'MUNDIAL 2026';
+    }
+    
     try {
-        const response = await fetch('/api/external/scoreboard');
+        const response = await fetch(`/api/external/scoreboard?competition=${competition}`);
         const result = await response.json();
 
         if (!result.ok) {
@@ -81,7 +117,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error loading scoreboard:', error);
         showError(error.message || 'Error de red al cargar el scoreboard');
     }
-});
+}
+
+function updateButtonStyles(competition) {
+    const wcBtn = document.getElementById('wcToggleBtn');
+    const plBtn = document.getElementById('plToggleBtn');
+    
+    if (competition === 'pl') {
+        plBtn.classList.remove('bg-white/10', 'border', 'border-white/20');
+        plBtn.classList.add('bg-[#BF7D24]');
+        
+        wcBtn.classList.remove('bg-[#BF7D24]');
+        wcBtn.classList.add('bg-white/10', 'border', 'border-white/20');
+    } else {
+        wcBtn.classList.remove('bg-white/10', 'border', 'border-white/20');
+        wcBtn.classList.add('bg-[#BF7D24]');
+        
+        plBtn.classList.remove('bg-[#BF7D24]');
+        plBtn.classList.add('bg-white/10', 'border', 'border-white/20');
+    }
+}
 
 function renderMatchesPage(page) {
     const total = __allMatches.length;
@@ -97,6 +152,12 @@ function renderMatchesPage(page) {
 function renderPagination(totalItems, currentPage, maxPage) {
     const container = document.getElementById('matchesPagination');
     if (!container) return;
+
+    // For Premier League, only show pagination if there are many matches (>10)
+    if (__currentCompetition === 'pl' && totalItems <= 10) {
+        container.innerHTML = '';
+        return;
+    }
 
     if (totalItems <= __pageSize) {
         container.innerHTML = '';
@@ -191,50 +252,81 @@ function renderMatches(matches) {
         return;
     }
 
-    let html = matches.map(match => {
-        const homeTeam = match.homeTeam?.name || 'Por confirmar';
-        const awayTeam = match.awayTeam?.name || 'Por confirmar';
-        const homeScore = match.score?.fullTime?.home ?? '-';
-        const awayScore = match.score?.fullTime?.away ?? '-';
-        const status = match.status || 'TIMED';
-        const utcDate = match.utcDate ? new Date(match.utcDate) : null;
-        const dateStr = utcDate ? utcDate.toLocaleDateString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Fecha no disponible';
-
-        let statusColor = 'text-blue-400';
-        let statusBg = 'bg-blue-500/20';
+    // For Premier League, group by status for better organization
+    if (__currentCompetition === 'pl') {
+        const finished = matches.filter(m => m.status === 'FINISHED');
+        const live = matches.filter(m => m.status === 'LIVE');
+        const scheduled = matches.filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED');
         
-        if (status === 'LIVE') {
-            statusColor = 'text-red-400';
-            statusBg = 'bg-red-500/20';
-        } else if (status === 'FINISHED') {
-            statusColor = 'text-green-400';
-            statusBg = 'bg-green-500/20';
-        } else if (status === 'TIMED' || status === 'SCHEDULED') {
-            statusColor = 'text-blue-400';
-            statusBg = 'bg-blue-500/20';
+        let html = '';
+        
+        // Finished matches section
+        if (finished.length > 0) {
+            html += `<h3 class="text-white font-bold text-lg mb-3 mt-4 text-green-400">Resultados Recientes</h3>`;
+            html += finished.map(match => renderMatchCard(match)).join('');
         }
+        
+        // Live matches section
+        if (live.length > 0) {
+            html += `<h3 class="text-white font-bold text-lg mb-3 mt-4 text-red-400">En Vivo</h3>`;
+            html += live.map(match => renderMatchCard(match)).join('');
+        }
+        
+        // Scheduled matches section
+        if (scheduled.length > 0) {
+            html += `<h3 class="text-white font-bold text-lg mb-3 mt-4 text-blue-400">Próximos Partidos</h3>`;
+            html += scheduled.map(match => renderMatchCard(match)).join('');
+        }
+        
+        container.innerHTML = html || '<p class="text-white/70 text-center py-8">Sin partidos disponibles</p>';
+    } else {
+        // World Cup - no grouping, just render all
+        let html = matches.map(match => renderMatchCard(match)).join('');
+        container.innerHTML = html;
+    }
+}
 
-        return `
-            <div class="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold ${statusColor}">● ${status}</span>
-                    <span class="text-xs text-white/60">${dateStr}</span>
+function renderMatchCard(match) {
+    const homeTeam = match.homeTeam?.name || 'Por confirmar';
+    const awayTeam = match.awayTeam?.name || 'Por confirmar';
+    const homeScore = match.score?.fullTime?.home ?? '-';
+    const awayScore = match.score?.fullTime?.away ?? '-';
+    const status = match.status || 'TIMED';
+    const utcDate = match.utcDate ? new Date(match.utcDate) : null;
+    const dateStr = utcDate ? utcDate.toLocaleDateString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Fecha no disponible';
+
+    let statusColor = 'text-blue-400';
+    let statusBg = 'bg-blue-500/20';
+    
+    if (status === 'LIVE') {
+        statusColor = 'text-red-400';
+        statusBg = 'bg-red-500/20';
+    } else if (status === 'FINISHED') {
+        statusColor = 'text-green-400';
+        statusBg = 'bg-green-500/20';
+    } else if (status === 'TIMED' || status === 'SCHEDULED') {
+        statusColor = 'text-blue-400';
+        statusBg = 'bg-blue-500/20';
+    }
+
+    return `
+        <div class="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition mb-3">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold ${statusColor}">● ${status}</span>
+                <span class="text-xs text-white/60">${dateStr}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <div class="flex-1 text-right">
+                    <p class="text-white font-bold text-sm">${homeTeam}</p>
                 </div>
-                <div class="flex items-center justify-between">
-                    <div class="flex-1 text-right">
-                        <p class="text-white font-bold text-sm">${homeTeam}</p>
-                    </div>
-                    <div class="px-4 text-center">
-                        <p class="text-white font-extrabold text-2xl">${homeScore} - ${awayScore}</p>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-white font-bold text-sm">${awayTeam}</p>
-                    </div>
+                <div class="px-4 text-center">
+                    <p class="text-white font-extrabold text-2xl">${homeScore} - ${awayScore}</p>
+                </div>
+                <div class="flex-1">
+                    <p class="text-white font-bold text-sm">${awayTeam}</p>
                 </div>
             </div>
-        `;
-    }).join('');
-
-    container.innerHTML = html;
+        </div>
+    `;
 }
 </script>

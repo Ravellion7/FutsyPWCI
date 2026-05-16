@@ -42,6 +42,17 @@
                 <h3 class="text-white font-bold text-xs sm:text-sm mb-3 sm:mb-4 flex items-center gap-2">
                     <span>PRÓXIMOS PARTIDOS</span>
                 </h3>
+                
+                <!-- Competition Toggle Buttons -->
+                <div class="mb-4 flex gap-2">
+                    <button id="wcToggleBtn" class="px-4 py-2 rounded-lg bg-[#BF7D24] text-white text-xs sm:text-sm font-semibold hover:bg-[#CE8F3A] transition" data-competition="wc">
+                        Copa Mundial
+                    </button>
+                    <button id="plToggleBtn" class="px-4 py-2 rounded-lg bg-white/10 text-white text-xs sm:text-sm font-semibold hover:bg-white/20 transition border border-white/20" data-competition="pl">
+                        Premier League
+                    </button>
+                </div>
+                
                 <div id="upcomingMatchesContainer" class="space-y-2 max-h-80 overflow-y-auto">
                     <p class="text-white/70 text-xs sm:text-sm text-center py-4">Cargando partidos...</p>
                 </div>
@@ -71,9 +82,23 @@
     </style>
 
     <script>
+        let __currentCompetition = 'wc';
+
         document.addEventListener('DOMContentLoaded', async () => {
+            // Load World Cup matches by default
+            await loadMatches('wc');
+            
+            // Set up toggle button listeners
+            document.getElementById('wcToggleBtn').addEventListener('click', () => loadMatches('wc'));
+            document.getElementById('plToggleBtn').addEventListener('click', () => loadMatches('pl'));
+        });
+
+        async function loadMatches(competition) {
+            __currentCompetition = competition;
+            updateButtonStyles(competition);
+            
             try {
-                const response = await fetch('/api/external/upcoming-matches');
+                const response = await fetch(`/api/external/upcoming-matches?competition=${competition}`);
                 const result = await response.json();
 
                 if (!result.ok) {
@@ -87,7 +112,26 @@
                 const container = document.getElementById('upcomingMatchesContainer');
                 container.innerHTML = '<p class="text-red-300 text-xs sm:text-sm text-center py-4">Error al cargar partidos</p>';
             }
-        });
+        }
+
+        function updateButtonStyles(competition) {
+            const wcBtn = document.getElementById('wcToggleBtn');
+            const plBtn = document.getElementById('plToggleBtn');
+            
+            if (competition === 'wc') {
+                wcBtn.classList.remove('bg-white/10', 'border', 'border-white/20');
+                wcBtn.classList.add('bg-[#BF7D24]');
+                
+                plBtn.classList.remove('bg-[#BF7D24]');
+                plBtn.classList.add('bg-white/10', 'border', 'border-white/20');
+            } else {
+                plBtn.classList.remove('bg-white/10', 'border', 'border-white/20');
+                plBtn.classList.add('bg-[#BF7D24]');
+                
+                wcBtn.classList.remove('bg-[#BF7D24]');
+                wcBtn.classList.add('bg-white/10', 'border', 'border-white/20');
+            }
+        }
 
         function renderUpcomingMatches(matches) {
             const container = document.getElementById('upcomingMatchesContainer');

@@ -153,6 +153,49 @@ class FootballDataService
     }
 
     /**
+     * Get Premier League scheduled matches
+     * 
+     * @return array Array of matches
+     */
+    public function getPremierLeagueScheduledMatches(): array
+    {
+        $response = $this->request('/competitions/PL/matches?status=SCHEDULED');
+        return $response['matches'] ?? [];
+    }
+
+    /**
+     * Get all Premier League matches
+     * 
+     * @return array Array of matches
+     */
+    public function getPremierLeagueAllMatches(): array
+    {
+        $response = $this->request('/competitions/PL/matches');
+        return $response['matches'] ?? [];
+    }
+
+    /**
+     * Get Premier League standings/table
+     * 
+     * @return array Array of standings data
+     */
+    public function getPremierLeagueStandings(): array
+    {
+        $response = $this->request('/competitions/PL/standings');
+        return $response['standings'] ?? [];
+    }
+
+    /**
+     * Get Premier League competition info
+     * 
+     * @return array Competition data
+     */
+    public function getPremierLeagueCompetition(): array
+    {
+        return $this->request('/competitions/PL');
+    }
+
+    /**
      * Get cache file path
      */
     private function getCachePath(string $key): string

@@ -877,16 +877,62 @@ class ApiController
         
         $service = new \App\Services\FootballDataService();
         
-        // Get live matches first
-        $liveMatches = $service->getLiveMatches();
+        // Get competition from query parameter (default: World Cup)
+        $competition = $_GET['competition'] ?? 'wc';
         
-        // If no live matches, get scheduled ones
-        if (empty($liveMatches)) {
-            $liveMatches = $service->getScheduledMatches();
+        if ($competition === 'pl') {
+            // Premier League data
+            $allMatches = $service->getPremierLeagueAllMatches();
+            $standings = $service->getPremierLeagueStandings();
+            
+            // Get current week boundaries (Monday to Sunday)
+            $today = new \DateTime('now', new \DateTimeZone('UTC'));
+            $dayOfWeek = (int)$today->format('N'); // 1 = Monday, 7 = Sunday
+            $daysToMonday = $dayOfWeek - 1;
+            
+            $weekStart = (clone $today)->modify("-{$daysToMonday} days")->setTime(0, 0, 0);
+            $weekEnd = (clone $weekStart)->modify('+6 days')->setTime(23, 59, 59);
+            
+            // Organize matches: finished (current week) -> live -> scheduled
+            $finished = array_filter($allMatches, function($match) use ($weekStart, $weekEnd) {
+                if (($match['status'] ?? '') !== 'FINISHED') {
+                    return false;
+                }
+                $matchDate = new \DateTime($match['utcDate'] ?? '', new \DateTimeZone('UTC'));
+                return $matchDate >= $weekStart && $matchDate <= $weekEnd;
+            });
+            
+            $live = array_filter($allMatches, function($match) {
+                return ($match['status'] ?? '') === 'LIVE';
+            });
+            $scheduled = array_filter($allMatches, function($match) {
+                $status = $match['status'] ?? '';
+                return $status === 'SCHEDULED' || $status === 'TIMED';
+            });
+            
+            // Sort finished matches by date (most recent first)
+            usort($finished, function($a, $b) {
+                $dateA = strtotime($a['utcDate'] ?? '');
+                $dateB = strtotime($b['utcDate'] ?? '');
+                return $dateB - $dateA;
+            });
+            
+            // Combine in order: finished (recent), live, scheduled
+            $organizedMatches = array_merge($finished, $live, $scheduled);
+            $liveMatches = array_values($organizedMatches);
+        } else {
+            // World Cup data (default)
+            // Get live matches first
+            $liveMatches = $service->getLiveMatches();
+            
+            // If no live matches, get scheduled ones
+            if (empty($liveMatches)) {
+                $liveMatches = $service->getScheduledMatches();
+            }
+            
+            // Get standings for context
+            $standings = $service->getStandings();
         }
-        
-        // Get standings for context
-        $standings = $service->getStandings();
         
         static::jsonResponse([
             'ok' => true,
@@ -903,8 +949,17 @@ class ApiController
         
         $service = new \App\Services\FootballDataService();
         
-        // Get all matches (includes LIVE, SCHEDULED, TIMED, FINISHED, etc)
-        $allMatches = $service->getAllMatches();
+        // Get competition from query parameter (default: World Cup)
+        $competition = $_GET['competition'] ?? 'wc';
+        
+        // Fetch matches based on competition
+        if ($competition === 'pl') {
+            // Premier League matches
+            $allMatches = $service->getPremierLeagueAllMatches();
+        } else {
+            // World Cup matches (default)
+            $allMatches = $service->getAllMatches();
+        }
         
         // Filter for upcoming matches - include any status except FINISHED
         // TIMED = partidos con fecha/hora confirmada pero sin jugar
